@@ -1,0 +1,180 @@
+local Translations = {
+   ["Webhook"] = "网勾",
+    ["Select Whitelist Biome"] = "选择白名单生物群系",
+    ["RAINY"] = "多雨的",
+    ["SNOWY"] = "下雪的",
+    ["WINDY"] = "有风的",
+    ["DREAMSPACE"] = "幻梦空间",
+    ["SANDSTORM"] = "沙尘暴",
+    ["GLITCHED"] = "有故障的",
+    ["NULL"] = "无效的",
+    ["CORRUPTION"] = "腐败",
+    ["STARFALL"] = "星瀑",
+    ["HELL"] = "地狱",
+    ["NORMAL"] = "正常的",
+    ["ESP Traveling Merchant"] = "绘制商人",
+    ["Start Tracking NPC"] = "开始跟踪npc",
+    ["Start Tracking Biome"] = "开始追踪生物群落",
+    ["Ping When Traveling Merchant Spawn"] = "旅行商人生成时ping",
+    ["Test Webhook"] = "测试网钩",
+    ["Home"] = "主要",
+    ["Credit"] = "信用",
+    ["Raid"] = "战斗",
+    ["Settings"] = "设置",
+    ["Setting"] = "功能",
+    ["Collect Obby Luck"] = "收集幸运",
+    ["Collect Coin"] = "收集硬币",
+    ["Collect Potion"] = "收集药水",
+    ["Collect Luck Clover"] = "收集幸远四叶草",
+    ["Main"] = "主要",
+    ["Start Collecting"] = "开始收集",
+    ["Auto Fishing"] = "自动钓鱼",
+    ["Select Sell Method"] = "选择销售方式",
+    ["Sell"] = "卖",
+    ["Sell All"] = "出售全部",
+    ["Auto sell Fish"] = "自动卖鱼",
+    ["Active Max Speed"] = "有效最大速度",
+    ["Raid"] = "战斗",
+    ["Settings"] = "设置",
+    ["Theme"] = "主题",
+    ["Transparency"] = "透明度",
+    ["Minimize Bind"] = "最小化绑定",
+    ["Configuration"] = "配置",
+    ["Config name"] = "配置名字",
+    ["Config list"] = "配置列表",
+    ["Create config"] = "创建配置",
+    ["Load config"] = "加载配置",
+    ["Overwrite config"] = "覆盖配置",
+    ["Refresh list"] = "刷新列表",
+    ["Set as autoload"] = "设置为自动加载",
+    ["Aoto Rejoin When Get kick"] = "在被踢时重新加入",
+    ["When Rejoin "] = "当重新加入时",
+    ["second"] = "第二",
+    ["Aoto Rejoin"] = "重新加入",
+    ["Anti AFK"] = "反挂机",
+    ["Youtube Channel"] = "油管渠道",
+    ["Buy Lifetime Key"] = "购买终身卡密",
+    ["Click Button To Copy Link"] = "单击复制链接",
+    ["Auto Farm Worm"] = "自动打沙虫",
+    ["Skill Activation Key"] = "移动用户技能激活密钥",
+    [Safe Level"] = "当血量低于水平传送到安全区",
+    ["input"] = "输入",
+    ["example"] = "示例",
+    ["Join Boss Raid"] = "加入首领战斗",
+    ["Misc"] = "杂项",
+}
+
+local function translateText(text)
+    if not text or type(text) ~= "string" then return text end
+    
+    if Translations[text] then
+        return Translations[text]
+    end
+    
+    for en, cn in pairs(Translations) do
+        if text:find(en) then
+            return text:gsub(en, cn)
+        end
+    end
+    
+    return text
+end
+
+local function setupTranslationEngine()
+    local success, err = pcall(function()
+        local oldIndex = getrawmetatable(game).__newindex
+        setreadonly(getrawmetatable(game), false)
+        
+        getrawmetatable(game).__newindex = newcclosure(function(t, k, v)
+            if (t:IsA("TextLabel") or t:IsA("TextButton") or t:IsA("TextBox")) and k == "Text" then
+                v = translateText(tostring(v))
+            end
+            return oldIndex(t, k, v)
+        end)
+        
+        setreadonly(getrawmetatable(game), true)
+    end)
+    
+    if not success then
+        warn("元表劫持失败:", err)
+       
+        local translated = {}
+        local function scanAndTranslate()
+            for _, gui in ipairs(game:GetService("CoreGui"):GetDescendants()) do
+                if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                    pcall(function()
+                        local text = gui.Text
+                        if text and text ~= "" then
+                            local translatedText = translateText(text)
+                            if translatedText ~= text then
+                                gui.Text = translatedText
+                                translated[gui] = true
+                            end
+                        end
+                    end)
+                end
+            end
+            
+            local player = game:GetService("Players").LocalPlayer
+            if player and player:FindFirstChild("PlayerGui") then
+                for _, gui in ipairs(player.PlayerGui:GetDescendants()) do
+                    if (gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("TextBox")) and not translated[gui] then
+                        pcall(function()
+                            local text = gui.Text
+                            if text and text ~= "" then
+                                local translatedText = translateText(text)
+                                if translatedText ~= text then
+                                    gui.Text = translatedText
+                                    translated[gui] = true
+                                end
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+        
+        local function setupDescendantListener(parent)
+            parent.DescendantAdded:Connect(function(descendant)
+                if descendant:IsA("TextLabel") or descendant:IsA("TextButton") or descendant:IsA("TextBox") then
+                    task.wait(0.1)
+                    pcall(function()
+                        local text = descendant.Text
+                        if text and text ~= "" then
+                            local translatedText = translateText(text)
+                            if translatedText ~= text then
+                                descendant.Text = translatedText
+                            end
+                        end
+                    end)
+                end
+            end)
+        end
+        
+        pcall(setupDescendantListener, game:GetService("CoreGui"))
+        local player = game:GetService("Players").LocalPlayer
+        if player and player:FindFirstChild("PlayerGui") then
+            pcall(setupDescendantListener, player.PlayerGui)
+        end
+        
+        while true do
+            scanAndTranslate()
+            task.wait(3)
+        end
+    end
+end
+
+task.wait(2)
+
+setupTranslationEngine()
+
+local successerr = pcall(function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/BaconBossScript/BeeconHub/main/BeeconHub"))()
+
+
+
+end)
+
+if not success then
+    warn("加载失败:", err)
+end
